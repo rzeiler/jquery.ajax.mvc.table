@@ -2,10 +2,11 @@
     $.fn.ajaxtable = function (options) {
 
         var settings = $.extend({
-            url:'',
+            url: '',
+            height: 200,
             start: 0,
             length: 10,
-            fixed: false,
+            fixed: 0,
             columns: [],
             search: '',
             order: [
@@ -18,44 +19,101 @@
 
         place = this;
 
-        var footer = $("<div class='row' ><div class='col s8' ></div><div class='col s4' ><span class='new badge' style='margin-top:15px;padding:10px;'></span></div></div>");
-        var table_head = $("<table/>");
-        var table_body = $("<table/>", { 'class': 'highlight' });
-        var thead_head = $("<thead/>");
-        var thead_body = $("<thead/>");
-        var tbody_body = $("<tbody/>");
-        var pagination = $("<ul/>", { 'class': 'pagination' });
 
-        var scroll_body = $("<div/>", { 'class': 'scroll_body', 'style': "overflow:auto; z-index:1; height:400px;" });
-        var scroll_head = $("<div/>", { 'class': 'scroll_head blue-grey lighten-5', 'style': 'overflow:hidden; padding-right:17px;   margin-right:17px;' });
+        var template = "<table cellpadding='0' cellspacing='0'><tr>";
+        template += "<td class='head fix grey lighten-4' ><div style='overflow:hidden;'><table><thead></thead><tbody></tbody></table></div></td>";
+        template += "<td class='head' ><div style='overflow:hidden;'><table><thead></thead><tbody></tbody></table></div></td>";
+        template += "</tr><tr>";
+        template += "<td class='body fix grey lighten-4' ><div style='overflow:hidden;height:400px;'><table><thead></thead><tbody></tbody></table></div></td>";
+        template += "<td class='body' ><div style='overflow:auto;height:400px;'><table><thead></thead><tbody></tbody></table></div></td>";
+        template += "</tr>";
+        template += "<tr><td colspan='2' class='footer' ><ul class='pagination'></ul><span class='new badge' style='margin-top:15px;padding:10px;'></span></td></tr>"
+        template += "</table>";
 
-        scroll_head.appendTo(place);
-        scroll_body.appendTo(place);
-        footer.appendTo(place);
-        pagination.appendTo(footer.find('div.col:eq(0)'));
+        place.html(template);
 
-        table_head.appendTo(scroll_head);
-        table_body.appendTo(scroll_body);
+        place.find('td, th').css({
+            'padding': 0,
+            'vertical-align': 'top'
+        });
 
-        thead_head.appendTo(table_head);
-        thead_body.appendTo(table_body);
-        tbody_body.appendTo(table_body);
+        $(window).resize(function () {
 
-        $("<tr/>").appendTo(thead_head);
-        $("<tr/>").appendTo(thead_head);
-        $("<tr/>").appendTo(thead_body);
+            var top = parseFloat(place.find('td.body:not(.fix) div table thead').outerHeight(true)) + 2;
+            place.find('td.body div table').css('marginTop', -top);
 
-        var dynamicHead = null;
-        var dynamicBody = null;
+            initWidth = parseFloat(place.prop("clientWidth"));
+            fixWidth = parseFloat(place.find('td.body.fix div').prop("offsetWidth"));
+
+            var scrollWidth = (initWidth - fixWidth);
+            place.find("table:first").css({
+                'width': initWidth
+            });
+            /* feste spalten breite  */
+            place.find("td.fix div").css({
+                'width': fixWidth + 'px'
+            });
+            place.find("td:not(.fix) div").css({
+                'width': scrollWidth + 'px'
+            });
+
+            /* breiten und höhen */
+            var headWidth = parseFloat(place.find('td.body:not(.fix) div table').outerWidth(true));
+            var divInnerWidth = parseFloat(place.find('td.body:not(.fix) div').prop("clientWidth"));
+            var divInnerHeight = parseFloat(place.find('td.body:not(.fix) div').prop("clientHeight"));
+            var divTableWidth = parseFloat(place.find('td.body:not(.fix) div table').prop("clientWidth"));
+            var divTableHeight = parseFloat(place.find('td.body:not(.fix) div table').prop("clientHeight"));
+            /* div höhe und breite */
+            place.find('td.head:not(.fix) div').innerWidth(divInnerWidth);
+            place.find('td.body.fix div').innerHeight(divInnerHeight);
+            /* tabellen breite */
+            place.find('td.head:not(.fix) div table').css({
+                'width': divTableWidth
+            });
+            /* tabellen höhe */
+            place.find('td.body.fix div table').css({
+                'height': divTableHeight
+            });
+            /* spalten breite */
+            place.find('td.body:not(.fix) div table thead tr:eq(0) th').each(function (i, e) {
+                place.find('td.head:not(.fix) div table thead tr:eq(0) th').eq(i).css({
+                    width: $(e).outerWidth(true)
+                });
+            });
+
+            for (var i = 0; i < options.fixed; i++) {
+                var outerWidth = place.find('td.body div table thead tr:eq(0) th').eq(i).outerWidth(true);
+                place.find('td.head.fix div table thead tr:eq(0) th').eq(i).outerWidth(outerWidth);
+            }
+
+            /* spalten höhe */
+            place.find('td.body:not(.fix) div table tbody tr').each(function (iTr, tr) {
+                var outerHeight = $(tr).find('td:eq(0)').outerHeight(true);
+                place.find('td.body.fix div table tbody tr:eq(' + iTr + ') td:eq(0)').css({
+                    height: outerHeight
+                });
+            });
+
+        });
+
+        footer = place.find('td.footer');
+        pagination = place.find('ul.pagination');
+
+        place.find('div thead').html("<tr></tr><tr></tr>");
 
         $.each(options.columns, function (i, e) {
-            $("<th/>", { 'class': 'sort', text: e.title, 'dir': '', 'index': i, 'title': 'Sortieren (Absteigend/Aufsteigend)' }).appendTo(thead_head.find('tr:eq(0)'));
-            $("<th/>", { text: e.title, 'dir': '', 'index': i }).appendTo(thead_body.find('tr:eq(0)'));
-            $("<th/>", { 'class': 'filter', html: '<input type="text" title="Suche nach" index="' + i + '"  >' }).appendTo(thead_head.find('tr:eq(1)'));
+
+            var head = place.find('td').not('.fix').find('div thead');
+            if (options.fixed >= i)
+                head = place.find('td.fix div thead');
+
+            $("<th/>", { 'class': 'sort', text: e.title, 'dir': '', 'index': i, 'title': 'Sortieren (Absteigend/Aufsteigend)' }).appendTo(head.find('tr:eq(0)'));
+            $("<th/>", { 'class': 'filter', html: '<input type="text" title="Suche nach" index="' + i + '"  >' }).appendTo(head.find('tr:eq(1)'));
+
         });
 
         /* filter */
-        place.on('change', 'th.filter input', function () {
+        place.on('keyup change', 'th.filter input', function () {
             var input = $(this);
             options.columns[input.attr('index')].search = this.value;
             options.start = 0;
@@ -96,31 +154,15 @@
             build();
         });
 
-        var top = '-' + (scroll_body.find("table thead").outerHeight(true) + 1) + 'px';
-        scroll_body.find("table").css('marginTop', top);
-        scroll_body.scroll(function () {
-            var currPos = scroll_body.scrollLeft();
-            scroll_head.scrollLeft(currPos);
-            var currPos = scroll_body.scrollTop();
-            dynamicBody.scrollTop(currPos);
 
-        });
 
-        $(window).resize(function () {
-            var witdh = scroll_body.find("thead tr:eq(0) th:eq(0)").outerWidth(true)
 
-            var cssOption = { position: 'absolute', top: 0, left: 0, height: 0, width: witdh, overflow: 'hidden' };
-            var offset = scroll_head.position();
-            cssOption.top = offset.top;
-            cssOption.left = offset.left;
-            cssOption.height = scroll_head.outerHeight(true);
-            dynamicHead.css(cssOption);
-
-            var offset = scroll_body.position();
-            cssOption.top = offset.top;
-            cssOption.left = offset.left;
-            cssOption.height = scroll_body.outerHeight(true) - 17;
-            dynamicBody.css(cssOption);
+        place.find('td.body:not(.fix) div').scroll(function () {
+            var body = $(this);
+            var currPos = parseFloat(body.scrollLeft());
+            place.find('td.head:not(.fix) div').scrollLeft(currPos);
+            var currPos = body.scrollTop();
+            place.find('td.body.fix div').scrollTop(currPos);
         });
 
         function build() {
@@ -134,7 +176,7 @@
 
             $.ajax({
                 method: 'POST',
-                url: options.url, 
+                url: options.url,
                 data: options,
                 dataType: 'json',
                 cache: false,
@@ -145,64 +187,53 @@
                     place.fadeTo(0, 1);
                 }
             }).done(function (response, status, jqxhr) {
-                tbody_body.html('');
+
+                var tbody = place.find('td.body:not(.fix) div tbody');
+                var tbody_fix = place.find('td.body.fix div tbody');
+
+                tbody.html('');
+                tbody_fix.html('');
+
                 pagination.html('');
 
                 /* fülle tabelle */
-                $.each(response.data, function (i, e) {
-                    var tr = $("<tr/>");
-                    $.each(options.columns, function (a, d) {
-                        var content = e[d.data];
-                        if (d.url != null) {
-                            content = "<a href='" + d.url.replace("$", e[d.data]) + "'>" + e[d.data] + "</a>";
+                $.each(response.data, function (i, item) {
+
+                    function createTd(Item, Column) {
+                        var content = Item[Column.data];
+                        var tooltip = Column.tooltip;
+                        /* date format */
+                        if (content != null && Column.type == 'date') {
+                            dt = new Date(parseInt(content.replace("/Date(", "").replace(")/", ""), 10));
+                            content = dt.getDate() + '.' + (dt.getMonth() + 1) + "." + dt.getFullYear();
                         }
-                        $("<td/>", { html: content }).appendTo(tr);
+                        /* bool format */
+                        if (content != null && Column.type == 'bool')
+                            content = parseInt(content) == 1 ? 'Ja' : 'Nein';
+
+                        if (Column.text != null)
+                            content = Column.text;
+
+                        if (Column.url != null)
+                            content = "<a href='" + Column.url.replace("$", Item[Column.data]) + "'>" + content + "</a>";
+
+                        return $("<td/>", { html: content, title: Column.tooltip });
+                    }
+
+                    var tr = $("<tr/>");
+                    var columns = options.columns.slice(options.fixed + 1);
+                    $.each(columns, function (a, column) {
+                        createTd(item, column).appendTo(tr);
                     });
-                    tr.appendTo(tbody_body);
+                    tr.appendTo(tbody);
+                    tr = $("<tr/>");
+                    var columns = options.columns.slice(0, options.fixed + 1);
+                    $.each(columns, function (a, column) {
+                        createTd(item, column).appendTo(tr);
+                    });
+                    tr.appendTo(tbody_fix);
+
                 });
-
-                scroll_body.find("thead tr:eq(0) th").each(function (i, e) {
-                    scroll_head.find("thead tr:eq(0) th").eq(i).css({
-                        width: $(e).outerWidth(true)
-                    });
-                });
-
-                /* tabellen kopieren */
-                if (options.fixed > 0) {
-
-                    place.find('.fix').remove();
-
-                    dynamicHead = scroll_head.clone();
-                    dynamicBody = scroll_body.clone();
-
-                    dynamicHead.appendTo(place);
-                    dynamicBody.appendTo(place);
-
-                    dynamicHead.attr('class', 'fix blue-grey lighten-5 z-depth-1');
-                    dynamicBody.attr('class', 'fix white z-depth-2');
-
-                    var witdh = scroll_body.find("thead tr:eq(0) th:eq(0)").outerWidth(true)
-
-                    var cssOption = { position: 'absolute', top: 0, left: 0, height: 0, width: witdh, overflow: 'hidden' };
-                    var offset = scroll_head.position();
-                    cssOption.top = offset.top;
-                    cssOption.left = offset.left;
-                    cssOption.height = scroll_head.outerHeight(true);
-                    dynamicHead.css(cssOption);
-
-                    var offset = scroll_body.position();
-                    cssOption.top = offset.top;
-                    cssOption.left = offset.left;
-                    cssOption.height = scroll_body.outerHeight(true) - 17;
-                    dynamicBody.css(cssOption);
-
-                    $.each(options.columns, function (i, e) {
-                        dynamicHead.find("thead tr:eq(1) th").eq(i).find("input").val(e.search);
-                    });
-                }
-
-
-                scroll_head.find("table").css('width', scroll_body.find("table").outerWidth(true));
 
                 /* texte */
                 var InfoTitel = "_START_ bis _END_ von _TOTAL_ Einträgen";
@@ -214,7 +245,7 @@
                 footer.find('.badge').text(InfoTitel.replace("_START_", options.start).replace("_END_", end).replace("_TOTAL_", response.recordsFiltered).replace("_MAX_", response.recordsTotal));
 
                 if (response.data.length == 0)
-                    $("<tr><td colspan='" + options.columns.length + "' >Keine Daten in der Tabelle vorhanden</td></tr>").appendTo(tbody_body);
+                    $("<tr><td colspan='" + options.columns.length + "' >Keine Daten in der Tabelle vorhanden</td></tr>").appendTo(place.find('td.body').not('.fix').find('div tbody'));
 
                 /* bereich und länge ermitteln */
                 var len = Math.round(response.recordsFiltered / options.length);
@@ -244,6 +275,9 @@
                 } else {
                     createLi(pagination, 'disabled', null, '>');
                 }
+
+                /* breiten neu errechnen */
+                $(window).trigger('resize');
 
             }).fail(function (jqxhr, status, error) {
                 console.log("error", jqxhr);
