@@ -3,6 +3,7 @@
 
         var settings = $.extend({
             url: '',
+            data: [],
             height: 200,
             start: 0,
             length: 10,
@@ -18,8 +19,7 @@
         }, options);
 
         place = this;
-
-
+        
         var template = "<table cellpadding='0' cellspacing='0'><tr>";
         template += "<td class='head fix grey lighten-4' ><div style='overflow:hidden;'><table><thead></thead><tbody></tbody></table></div></td>";
         template += "<td class='head' ><div style='overflow:hidden;'><table><thead></thead><tbody></tbody></table></div></td>";
@@ -98,20 +98,16 @@
 
         footer = place.find('td.footer');
         pagination = place.find('ul.pagination');
-
         place.find('div thead').html("<tr></tr><tr></tr>");
 
         $.each(options.columns, function (i, e) {
-
             var head = place.find('td').not('.fix').find('div thead');
             if (options.fixed >= i)
                 head = place.find('td.fix div thead');
 
             $("<th/>", { 'class': 'sort', text: e.title, 'dir': '', 'index': i, 'title': 'Sortieren (Absteigend/Aufsteigend)' }).appendTo(head.find('tr:eq(0)'));
             $("<th/>", { 'class': 'filter', html: '<input type="text" title="Suche nach" index="' + i + '"  >' }).appendTo(head.find('tr:eq(1)'));
-
         });
-
         /* filter */
         place.on('keyup change', 'th.filter input', function () {
             var input = $(this);
@@ -119,7 +115,6 @@
             options.start = 0;
             build();
         });
-
         /* seiten navicgation */
         footer.on('click', 'ul>li.waves-effect', function () {
             var start = $(this).attr('start');
@@ -128,7 +123,6 @@
                 build();
             }
         });
-
         /* sort click */
         place.on('click', 'th.sort', function () {
             var th = $(this);
@@ -141,22 +135,27 @@
                     th.attr('dir', '');
                 }
             }
+
             options.order = [];
-            thead_head.find('tr:eq(0) th').each(function () {
+            place.find('th.sort').each(function (index, element) {
                 var th = $(this);
                 if (!th.attr('dir') == '') {
+                    th.addClass('blue lighten-4');
                     options.order.push({
                         column: th.attr('index'),
                         dir: th.attr('dir')
                     });
+                } else {
+                    th.removeClass('blue lighten-4');
                 }
             });
             build();
+
+            var i = th.index();
+            place.find('td.body:not(.fix) td:eq(' + i + ')').addClass('blue darken-1');
+
         });
-
-
-
-
+        /* scroll */
         place.find('td.body:not(.fix) div').scroll(function () {
             var body = $(this);
             var currPos = parseFloat(body.scrollLeft());
@@ -214,8 +213,10 @@
                         if (Column.text != null)
                             content = Column.text;
 
-                        if (Column.url != null)
-                            content = "<a href='" + Column.url.replace("$", Item[Column.data]) + "'>" + content + "</a>";
+                        if (Column.url != null) {
+                            var target = (Column.target != undefined) ? "target='" + Column.target + "'" : "";
+                            content = "<a href='" + Column.url.replace("$", Item[Column.data]) + "' " + target + " >" + content + "</a>";
+                        }
 
                         return $("<td/>", { html: content, title: Column.tooltip });
                     }
@@ -248,7 +249,7 @@
                     $("<tr><td colspan='" + options.columns.length + "' >Keine Daten in der Tabelle vorhanden</td></tr>").appendTo(place.find('td.body').not('.fix').find('div tbody'));
 
                 /* bereich und länge ermitteln */
-                var len = Math.round(response.recordsFiltered / options.length);
+                var len = Math.round(response.recordsFiltered / options.length) + 1;
                 var min = (options.start / options.length) - 5;
                 min = (min < 0) ? 0 : min;
                 var max = ((min + 10) > len) ? len : (min + 10);
