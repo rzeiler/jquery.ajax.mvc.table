@@ -19,7 +19,8 @@
         }, options);
 
         place = this;
-        
+
+
         var template = "<table cellpadding='0' cellspacing='0'><tr>";
         template += "<td class='head fix grey lighten-4' ><div style='overflow:hidden;'><table><thead></thead><tbody></tbody></table></div></td>";
         template += "<td class='head' ><div style='overflow:hidden;'><table><thead></thead><tbody></tbody></table></div></td>";
